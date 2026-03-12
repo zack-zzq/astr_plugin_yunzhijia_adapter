@@ -54,6 +54,9 @@ except ImportError:
             "description": "请求鉴权 Secret (可选)",
             "type": "string",
             "hint": "云之家推送消息时的 HMAC-SHA1 签名密钥。如果不填则不强制校验"
+        },
+        "logo_token": {
+            "invisible": True
         }
     }
 )
