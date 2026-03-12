@@ -24,10 +24,38 @@ except ImportError:
         "host": "0.0.0.0",
         "port": 8090,
         "path": "/yzj/webhook",
-        "send_msg_url": "YOUR_YUNZHIJIA_BOT_SEND_MSG_URL",
+        "send_msg_url": "",
         "secret": ""
     },
-    logo_path="logo.png"
+    adapter_display_name="云之家",
+    logo_path="logo.png",
+    config_metadata={
+        "host": {
+            "description": "监听 Host (默认 0.0.0.0)",
+            "type": "string",
+            "default": "0.0.0.0"
+        },
+        "port": {
+            "description": "监听端口 (默认 8090)",
+            "type": "int",
+            "default": 8090
+        },
+        "path": {
+            "description": "Webhook 路径 (默认 /yzj/webhook)",
+            "type": "string",
+            "default": "/yzj/webhook"
+        },
+        "send_msg_url": {
+            "description": "发消息接口地址",
+            "type": "string",
+            "hint": "填入云之家后台的 Webhook URL"
+        },
+        "secret": {
+            "description": "请求鉴权 Secret (可选)",
+            "type": "string",
+            "hint": "云之家推送消息时的 HMAC-SHA1 签名密钥。如果不填则不强制校验"
+        }
+    }
 )
 class YunzhijiaPlatformAdapter(Platform):
 
