@@ -105,6 +105,16 @@ class YunzhijiaPlatformAdapter(Platform):
         
         logger.info(f"Yunzhijia Adapter webhook listening on http://{host}:{port}{path}")
 
+    async def terminate(self) -> None:
+        if self.site:
+            await self.site.stop()
+            self.site = None
+        if self.runner:
+            await self.runner.cleanup()
+            self.runner = None
+        await super().terminate()
+        logger.info("Yunzhijia Adapter webhook stopped.")
+
     async def handle_health_check(self, request: web.Request) -> web.Response:
         return web.Response(text="OK")
 
