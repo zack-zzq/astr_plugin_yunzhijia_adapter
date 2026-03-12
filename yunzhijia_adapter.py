@@ -172,6 +172,8 @@ class YunzhijiaPlatformAdapter(Platform):
                 return web.Response(status=400, text="invalid json payload, expected object")
         except json.JSONDecodeError:
             return web.Response(status=400, text="invalid json")
+            
+        logger.info(f"[Yunzhijia Webhook Debug] Received Payload: {data}")
 
         if not self._verify_signature(request, data):
             return web.Response(status=401, text="invalid signature")
