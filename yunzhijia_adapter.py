@@ -10,7 +10,9 @@ from astrbot.api.event import MessageChain
 from astrbot.api.message_components import Plain, At
 from astrbot.core.platform.astr_message_event import MessageSesion
 from astrbot.api.platform import register_platform_adapter
-from astrbot import logger
+from astrbot.api import logger
+import base64
+import re
 
 try:
     from .yunzhijia_event import YunzhijiaPlatformEvent
@@ -70,6 +72,7 @@ class YunzhijiaPlatformAdapter(Platform):
         self.app = web.Application()
         self.runner = None
         self.site = None
+        self.client_session = None
     
     async def send_by_session(self, session: MessageSesion, message_chain: MessageChain):
         # We need to construct an event and call its send method
@@ -78,7 +81,8 @@ class YunzhijiaPlatformAdapter(Platform):
             message_obj=AstrBotMessage(), 
             platform_meta=self.meta(), 
             session_id=session.session_id, 
-            send_msg_url=self.config.get("send_msg_url")
+            send_msg_url=self.config.get("send_msg_url"),
+            client_session=self.client_session
         )
         await ev.send(message_chain)
         await super().send_by_session(session, message_chain)
@@ -98,6 +102,8 @@ class YunzhijiaPlatformAdapter(Platform):
         self.app.router.add_post(path, self.handle_webhook)
         self.app.router.add_get(path, self.handle_health_check)
 
+        self.client_session = aiohttp.ClientSession()
+
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
         self.site = web.TCPSite(self.runner, host, port)
@@ -112,6 +118,9 @@ class YunzhijiaPlatformAdapter(Platform):
         if self.runner:
             await self.runner.cleanup()
             self.runner = None
+        if self.client_session and not self.client_session.closed:
+            await self.client_session.close()
+            self.client_session = None
         await super().terminate()
         logger.info("Yunzhijia Adapter webhook stopped.")
 
@@ -146,7 +155,6 @@ class YunzhijiaPlatformAdapter(Platform):
             signature_string = ",".join(sig_parts)
             
             # Compute HmacSHA1
-            import base64
             hmac_obj = hmac.new(
                 secret.encode('utf-8'),
                 signature_string.encode('utf-8'),
@@ -154,7 +162,7 @@ class YunzhijiaPlatformAdapter(Platform):
             )
             expected_signature = base64.b64encode(hmac_obj.digest()).decode('utf-8')
             
-            if sign == expected_signature:
+            if hmac.compare_digest(sign, expected_signature):
                 return True
             else:
                 logger.warning(f"Yunzhijia signature mismatch. Expected: {expected_signature}, Got: {sign}")
@@ -214,7 +222,6 @@ class YunzhijiaPlatformAdapter(Platform):
         if abm.self_id:
             message_chain.append(At(qq=abm.self_id))
             
-        import re
         if bot_name:
             # If the literal `@BotName` string DOES exist in the text, we strip it out so it doesn't 
             # pollute the command arguments.
@@ -245,6 +252,7 @@ class YunzhijiaPlatformAdapter(Platform):
             message_obj=message,
             platform_meta=self.meta(),
             session_id=message.session_id,
-            send_msg_url=self.config.get("send_msg_url")
+            send_msg_url=self.config.get("send_msg_url"),
+            client_session=self.client_session
         )
         self.commit_event(message_event)

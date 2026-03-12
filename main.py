@@ -6,7 +6,8 @@ from astrbot.api import logger
 class YunzhijiaAdapterPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
-        from .yunzhijia_adapter import YunzhijiaPlatformAdapter # noqa
+        # Import to trigger @register_platform_adapter side-effect
+        from .yunzhijia_adapter import YunzhijiaPlatformAdapter # noqa: F401
         
     async def initialize(self):
         """可选择实现异步的插件初始化方法，当实例化该插件类之后会自动调用该方法。"""

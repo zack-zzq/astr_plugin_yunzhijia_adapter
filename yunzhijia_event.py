@@ -1,13 +1,13 @@
 from astrbot.api.event import AstrMessageEvent, MessageChain
 from astrbot.api.platform import AstrBotMessage, PlatformMetadata
-from astrbot.api.message_components import Plain, Image
-from astrbot import logger
+from astrbot.api import logger
 import aiohttp
 
 class YunzhijiaPlatformEvent(AstrMessageEvent):
-    def __init__(self, message_str: str, message_obj: AstrBotMessage, platform_meta: PlatformMetadata, session_id: str, send_msg_url: str):
+    def __init__(self, message_str: str, message_obj: AstrBotMessage, platform_meta: PlatformMetadata, session_id: str, send_msg_url: str, client_session: aiohttp.ClientSession = None):
         super().__init__(message_str, message_obj, platform_meta, session_id)
         self.send_msg_url = send_msg_url
+        self.client_session = client_session
         
     async def send(self, message: MessageChain):
         # We will compile text elements to send them as a single message
@@ -49,12 +49,21 @@ class YunzhijiaPlatformEvent(AstrMessageEvent):
             }]
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(self.send_msg_url, json=payload) as response:
+            if self.client_session and not self.client_session.closed:
+                async with self.client_session.post(self.send_msg_url, json=payload) as response:
                     if response.status != 200:
                         error_text = await response.text()
                         logger.error(f"Failed to send Yunzhijia message: HTTP {response.status} - {error_text}")
                     else:
                         logger.info(f"Successfully sent Yunzhijia message: {text[:50]}...")
+            else:
+                # Fallback to creating a single-use session if the long-lived one isn't available
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(self.send_msg_url, json=payload) as response:
+                        if response.status != 200:
+                            error_text = await response.text()
+                            logger.error(f"Failed to send Yunzhijia message: HTTP {response.status} - {error_text}")
+                        else:
+                            logger.info(f"Successfully sent Yunzhijia message: {text[:50]}...")
         except Exception as e:
             logger.error(f"Error sending Yunzhijia message: {e}")
