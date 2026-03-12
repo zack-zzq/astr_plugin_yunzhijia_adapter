@@ -56,6 +56,7 @@ except ImportError:
             "hint": "云之家推送消息时的 HMAC-SHA1 签名密钥。如果不填则不强制校验"
         },
         "logo_token": {
+            "type": "string",
             "invisible": True
         }
     }
@@ -108,8 +109,9 @@ class YunzhijiaPlatformAdapter(Platform):
 
     def _verify_signature(self, request: web.Request, data: dict) -> bool:
         secret = self.config.get("secret")
-        if not secret:
-            return True # No secret configured, skip validation
+        # Bypass validation if no secret is configured, or if it is a Yunzhijia test ping
+        if not secret or data.get("robotId") == "test-robotId":
+            return True 
             
         sign = request.headers.get("sign") or request.headers.get("Sign") or request.headers.get("SIGN")
         if not sign:
@@ -155,6 +157,8 @@ class YunzhijiaPlatformAdapter(Platform):
         
         try:
             data = json.loads(raw_body)
+            if not isinstance(data, dict):
+                return web.Response(status=400, text="invalid json payload, expected object")
         except json.JSONDecodeError:
             return web.Response(status=400, text="invalid json")
 
