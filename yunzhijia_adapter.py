@@ -4,6 +4,7 @@ import hmac
 import hashlib
 import time
 from aiohttp import web
+import aiohttp
 
 from astrbot.api.platform import Platform, AstrBotMessage, MessageMember, PlatformMetadata, MessageType
 from astrbot.api.event import MessageChain
