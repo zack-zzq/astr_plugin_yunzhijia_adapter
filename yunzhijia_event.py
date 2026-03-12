@@ -1,6 +1,7 @@
 from astrbot.api.event import AstrMessageEvent, MessageChain
 from astrbot.api.platform import AstrBotMessage, PlatformMetadata
 from astrbot.api import logger
+from astrbot.api.message_components import Plain, Image
 import aiohttp
 
 class YunzhijiaPlatformEvent(AstrMessageEvent):
@@ -25,8 +26,6 @@ class YunzhijiaPlatformEvent(AstrMessageEvent):
 
         if text_content:
             await self._send_yunzhijia_message(text_content)
-
-        await super().send(message)
         
     async def _send_yunzhijia_message(self, text: str):
         if not self.send_msg_url:
@@ -49,21 +48,25 @@ class YunzhijiaPlatformEvent(AstrMessageEvent):
             }]
 
         try:
+            timeout = aiohttp.ClientTimeout(total=10)
             if self.client_session and not self.client_session.closed:
-                async with self.client_session.post(self.send_msg_url, json=payload) as response:
+                async with self.client_session.post(self.send_msg_url, json=payload, timeout=timeout) as response:
                     if response.status != 200:
                         error_text = await response.text()
                         logger.error(f"Failed to send Yunzhijia message: HTTP {response.status} - {error_text}")
                     else:
                         logger.info(f"Successfully sent Yunzhijia message: {text[:50]}...")
             else:
-                # Fallback to creating a single-use session if the long-lived one isn't available
-                async with aiohttp.ClientSession() as session:
+                async with aiohttp.ClientSession(timeout=timeout) as session:
                     async with session.post(self.send_msg_url, json=payload) as response:
                         if response.status != 200:
                             error_text = await response.text()
                             logger.error(f"Failed to send Yunzhijia message: HTTP {response.status} - {error_text}")
                         else:
                             logger.info(f"Successfully sent Yunzhijia message: {text[:50]}...")
+        except aiohttp.ClientError as e:
+            logger.error(f"Network error sending Yunzhijia message: {e}")
+        except asyncio.TimeoutError:
+            logger.error("Timeout sending Yunzhijia message.")
         except Exception as e:
-            logger.error(f"Error sending Yunzhijia message: {e}")
+            logger.error(f"Unexpected error sending Yunzhijia message: {e}")

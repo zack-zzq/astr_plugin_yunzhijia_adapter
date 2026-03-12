@@ -15,10 +15,7 @@ from astrbot.api import logger
 import base64
 import re
 
-try:
-    from .yunzhijia_event import YunzhijiaPlatformEvent
-except ImportError:
-    from yunzhijia_event import YunzhijiaPlatformEvent
+from .yunzhijia_event import YunzhijiaPlatformEvent
 
 @register_platform_adapter(
     "yunzhijia", 
@@ -86,7 +83,6 @@ class YunzhijiaPlatformAdapter(Platform):
             client_session=self.client_session
         )
         await ev.send(message_chain)
-        await super().send_by_session(session, message_chain)
     
     def meta(self) -> PlatformMetadata:
         return PlatformMetadata(
@@ -130,8 +126,8 @@ class YunzhijiaPlatformAdapter(Platform):
 
     def _verify_signature(self, request: web.Request, data: dict) -> bool:
         secret = self.config.get("secret")
-        # Bypass validation if no secret is configured, or if it is a Yunzhijia test ping
-        if not secret or data.get("robotId") == "test-robotId":
+        # Bypass validation if no secret is configured
+        if not secret:
             return True 
             
         sign = request.headers.get("sign") or request.headers.get("Sign") or request.headers.get("SIGN")
@@ -166,7 +162,7 @@ class YunzhijiaPlatformAdapter(Platform):
             if hmac.compare_digest(sign, expected_signature):
                 return True
             else:
-                logger.warning(f"Yunzhijia signature mismatch. Expected: {expected_signature}, Got: {sign}")
+                logger.warning("Yunzhijia signature mismatch.")
                 return False
         except Exception as e:
             logger.error(f"Error validating Yunzhijia signature: {e}")
@@ -182,7 +178,9 @@ class YunzhijiaPlatformAdapter(Platform):
         except json.JSONDecodeError:
             return web.Response(status=400, text="invalid json")
             
-        logger.info(f"[Yunzhijia Webhook Debug] Received Payload: {data}")
+        # Intercept Yunzhijia's diagnostic test pings safely
+        if data.get("robotId") == "test-robotId":
+            return web.json_response({"success": True, "data": {"type": 2, "content": ""}})
 
         if not self._verify_signature(request, data):
             return web.Response(status=401, text="invalid signature")
