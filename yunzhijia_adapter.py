@@ -67,7 +67,7 @@ class YunzhijiaPlatformAdapter(Platform):
         super().__init__(platform_config, event_queue)
         self.config = platform_config
         self.settings = platform_settings
-        self.app = web.Application()
+        self.app = None
         self.runner = None
         self.site = None
         self.client_session = None
@@ -95,7 +95,12 @@ class YunzhijiaPlatformAdapter(Platform):
         host = self.config.get("host", "0.0.0.0")
         port = self.config.get("port", 8090)
         path = self.config.get("path", "/yzj/webhook")
+        
+        secret = self.config.get("secret")
+        if not secret:
+            logger.warning("Yunzhijia Adapter secret is empty! Webhook signature verification is DISABLED. This is a severe security risk if exposed to public networks.")
 
+        self.app = web.Application()
         self.app.router.add_post(path, self.handle_webhook)
         self.app.router.add_get(path, self.handle_health_check)
 
@@ -169,40 +174,48 @@ class YunzhijiaPlatformAdapter(Platform):
             return False
 
     async def handle_webhook(self, request: web.Request) -> web.Response:
-        raw_body = await request.text()
-        
         try:
-            data = json.loads(raw_body)
-            if not isinstance(data, dict):
-                return web.Response(status=400, text="invalid json payload, expected object")
-        except json.JSONDecodeError:
-            return web.Response(status=400, text="invalid json")
+            if request.content_length and request.content_length > 5 * 1024 * 1024:
+                logger.warning(f"Payload too large from {request.remote}")
+                return web.Response(status=413, text="Payload Too Large")
+
+            raw_body = await request.text()
             
-        # Intercept Yunzhijia's diagnostic test pings safely
-        if data.get("robotId") == "test-robotId":
-            return web.json_response({"success": True, "data": {"type": 2, "content": ""}})
+            try:
+                data = json.loads(raw_body)
+                if not isinstance(data, dict):
+                    return web.Response(status=400, text="invalid json payload, expected object")
+            except json.JSONDecodeError:
+                return web.Response(status=400, text="invalid json")
+                
+            # Intercept Yunzhijia's diagnostic test pings safely
+            if data.get("robotId") == "test-robotId":
+                return web.json_response({"success": True, "data": {"type": 2, "content": ""}})
 
-        if not self._verify_signature(request, data):
-            return web.Response(status=401, text="invalid signature")
+            if not self._verify_signature(request, data):
+                return web.Response(status=401, text="invalid signature")
 
-        # Typical YZJ Webhook format from openclaw reference:
-        # { "type": 2, "robotId": "...", "operatorOpenid": "...", "operatorName": "...", "msgId": "...", "content": "..." }
-        
-        if "content" not in data:
-            return web.Response(status=400, text="missing required fields")
+            # Typical YZJ Webhook format from openclaw reference:
+            # { "type": 2, "robotId": "...", "operatorOpenid": "...", "operatorName": "...", "msgId": "...", "content": "..." }
+            
+            if "content" not in data:
+                return web.Response(status=400, text="missing required fields")
 
-        # Convert and commit to queue asynchronously so we can return response immediately
-        abm = await self.convert_message(data)
-        await self.handle_msg(abm)
+            # Convert and commit to queue asynchronously so we can return response immediately
+            abm = await self.convert_message(data)
+            await self.handle_msg(abm)
 
-        # ACK to Yunzhijia
-        return web.json_response({
-            "success": True,
-            "data": {
-                "type": 2,
-                "content": ""
-            }
-        })
+            # ACK to Yunzhijia
+            return web.json_response({
+                "success": True,
+                "data": {
+                    "type": 2,
+                    "content": ""
+                }
+            })
+        except Exception as e:
+            logger.error(f"Error handling Yunzhijia webhook: {e}")
+            return web.Response(status=500, text="Internal Server Error")
 
     async def convert_message(self, data: dict) -> AstrBotMessage:
         abm = AstrBotMessage()

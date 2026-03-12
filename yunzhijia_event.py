@@ -3,6 +3,7 @@ from astrbot.api.platform import AstrBotMessage, PlatformMetadata
 from astrbot.api import logger
 from astrbot.api.message_components import Plain, Image
 import aiohttp
+import asyncio
 
 class YunzhijiaPlatformEvent(AstrMessageEvent):
     def __init__(self, message_str: str, message_obj: AstrBotMessage, platform_meta: PlatformMetadata, session_id: str, send_msg_url: str, client_session: aiohttp.ClientSession = None):
@@ -55,7 +56,7 @@ class YunzhijiaPlatformEvent(AstrMessageEvent):
                         error_text = await response.text()
                         logger.error(f"Failed to send Yunzhijia message: HTTP {response.status} - {error_text}")
                     else:
-                        logger.info(f"Successfully sent Yunzhijia message: {text[:50]}...")
+                        logger.info("Successfully sent Yunzhijia message.")
             else:
                 async with aiohttp.ClientSession(timeout=timeout) as session:
                     async with session.post(self.send_msg_url, json=payload) as response:
@@ -63,7 +64,7 @@ class YunzhijiaPlatformEvent(AstrMessageEvent):
                             error_text = await response.text()
                             logger.error(f"Failed to send Yunzhijia message: HTTP {response.status} - {error_text}")
                         else:
-                            logger.info(f"Successfully sent Yunzhijia message: {text[:50]}...")
+                            logger.info("Successfully sent Yunzhijia message.")
         except aiohttp.ClientError as e:
             logger.error(f"Network error sending Yunzhijia message: {e}")
         except asyncio.TimeoutError:
