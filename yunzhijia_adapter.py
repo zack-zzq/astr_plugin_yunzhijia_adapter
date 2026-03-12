@@ -209,7 +209,7 @@ class YunzhijiaPlatformAdapter(Platform):
         if bot_name:
             # Yunzhijia payloads include the literal "@BotName " string in the text.
             # AstrBot needs us to strip this and inject an `At` component so its routing recognizes the mention.
-            pattern = r"^\s*@?" + re.escape(bot_name) + r"\s*"
+            pattern = r"^(?:回复\s*)?@?" + re.escape(bot_name) + r"\s*[:：]?\s*"
             match = re.search(pattern, content)
             if match:
                 message_chain.append(At(qq=abm.self_id))
