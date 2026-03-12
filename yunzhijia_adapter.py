@@ -7,7 +7,7 @@ from aiohttp import web
 
 from astrbot.api.platform import Platform, AstrBotMessage, MessageMember, PlatformMetadata, MessageType
 from astrbot.api.event import MessageChain
-from astrbot.api.message_components import Plain
+from astrbot.api.message_components import Plain, At
 from astrbot.core.platform.astr_message_event import MessageSesion
 from astrbot.api.platform import register_platform_adapter
 from astrbot import logger
@@ -197,17 +197,36 @@ class YunzhijiaPlatformAdapter(Platform):
 
     async def convert_message(self, data: dict) -> AstrBotMessage:
         abm = AstrBotMessage()
-        abm.type = MessageType.GROUP_MESSAGE # Yunzhijia bot usually works in group context (group_ids might not be explicit, robotId serves as context)
+        abm.type = MessageType.GROUP_MESSAGE # Yunzhijia bot usually works in group context
         abm.group_id = data.get("robotId", "")
-        abm.message_str = data.get("content", "").strip()
+        abm.self_id = data.get("robotId", "")
+        
+        content = data.get("content", "").strip()
+        bot_name = data.get("robotName", "")
+        
+        message_chain = []
+        import re
+        if bot_name:
+            # Yunzhijia payloads include the literal "@BotName " string in the text.
+            # AstrBot needs us to strip this and inject an `At` component so its routing recognizes the mention.
+            pattern = r"^\s*@?" + re.escape(bot_name) + r"\s*"
+            match = re.search(pattern, content)
+            if match:
+                message_chain.append(At(qq=abm.self_id))
+                content = content[match.end():].strip()
+                
+        if content:
+            message_chain.append(Plain(text=content))
+            
+        abm.message_str = content
+        abm.message = message_chain if message_chain else [Plain(text="")]
+        
         abm.sender = MessageMember(
             user_id=data.get("operatorOpenid", "unknown"), 
             nickname=data.get("operatorName", "未知用户")
         )
-        abm.message = [Plain(text=abm.message_str)]
         abm.raw_message = data
-        abm.self_id = data.get("robotId", "")
-        abm.session_id = data.get("robotId", "unknown") # Use robotId as session for group-like continuity
+        abm.session_id = data.get("robotId", "unknown") 
         abm.message_id = data.get("msgId", str(time.time()))
         
         return abm
