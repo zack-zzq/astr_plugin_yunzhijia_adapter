@@ -17,13 +17,18 @@ try:
 except ImportError:
     from yunzhijia_event import YunzhijiaPlatformEvent
 
-@register_platform_adapter("yunzhijia", "云之家平台适配器", default_config_tmpl={
-    "host": "0.0.0.0",
-    "port": 8090,
-    "path": "/yzj/webhook",
-    "send_msg_url": "YOUR_YUNZHIJIA_BOT_SEND_MSG_URL",
-    "secret": ""
-})
+@register_platform_adapter(
+    "yunzhijia", 
+    "云之家平台适配器", 
+    default_config_tmpl={
+        "host": "0.0.0.0",
+        "port": 8090,
+        "path": "/yzj/webhook",
+        "send_msg_url": "YOUR_YUNZHIJIA_BOT_SEND_MSG_URL",
+        "secret": ""
+    },
+    logo_path="logo.png"
+)
 class YunzhijiaPlatformAdapter(Platform):
 
     def __init__(self, platform_config: dict, platform_settings: dict, event_queue: asyncio.Queue) -> None:
