@@ -207,14 +207,20 @@ class YunzhijiaPlatformAdapter(Platform):
         bot_name = data.get("robotName", "")
         
         message_chain = []
+        
+        # Yunzhijia only forwards messages to the webhook if the bot was explicitly mentioned or replied to.
+        # However, the physical `@BotName` string might be missing from the `content` field if it was a reply.
+        # Consequently, we unconditionally append an At component so AstrBot routes it as a direct command.
+        if abm.self_id:
+            message_chain.append(At(qq=abm.self_id))
+            
         import re
         if bot_name:
-            # Yunzhijia payloads include the literal "@BotName " string in the text.
-            # AstrBot needs us to strip this and inject an `At` component so its routing recognizes the mention.
+            # If the literal `@BotName` string DOES exist in the text, we strip it out so it doesn't 
+            # pollute the command arguments.
             pattern = r"^(?:回复\s*)?@?" + re.escape(bot_name) + r"\s*[:：]?\s*"
             match = re.search(pattern, content)
             if match:
-                message_chain.append(At(qq=abm.self_id))
                 content = content[match.end():].strip()
                 
         if content:
