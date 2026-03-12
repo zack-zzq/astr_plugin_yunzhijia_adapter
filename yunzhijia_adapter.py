@@ -87,6 +87,7 @@ class YunzhijiaPlatformAdapter(Platform):
         return PlatformMetadata(
             "yunzhijia",
             "云之家适配器",
+            "yunzhijia"
         )
 
     async def run(self):
