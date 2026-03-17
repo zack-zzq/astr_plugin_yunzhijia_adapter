@@ -29,6 +29,7 @@ from .yunzhijia_event import YunzhijiaPlatformEvent
     },
     adapter_display_name="云之家",
     logo_path="logo.png",
+    support_streaming_message=False,
     config_metadata={
         "host": {
             "description": "监听 Host (默认 0.0.0.0)",
@@ -86,9 +87,9 @@ class YunzhijiaPlatformAdapter(Platform):
     
     def meta(self) -> PlatformMetadata:
         return PlatformMetadata(
-            id="yunzhijia",
-            name="云之家适配器",
-            platform="yunzhijia"
+            "yunzhijia",
+            "云之家适配器",
+            "yunzhijia"
         )
 
     async def run(self):
