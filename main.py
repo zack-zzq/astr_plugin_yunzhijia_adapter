@@ -1,5 +1,5 @@
-from astrbot.api.star import Context, Star, register
-from astrbot.api import logger
+from astrbot.api.star import Context, Star
 
-# Import to trigger @register_platform_adapter side-effect
-from .yunzhijia_adapter import YunzhijiaPlatformAdapter  # noqa: F401
+class YunzhijiaAdapterPlugin(Star):
+    def __init__(self, context: Context):
+        from .yunzhijia_adapter import YunzhijiaPlatformAdapter
