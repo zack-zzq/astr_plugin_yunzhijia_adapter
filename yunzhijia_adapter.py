@@ -87,7 +87,7 @@ class YunzhijiaPlatformAdapter(Platform):
     
     def meta(self) -> PlatformMetadata:
         return PlatformMetadata(
-            "yunzhijia",
+            "云之家",
             "云之家适配器",
             "yunzhijia"
         )
